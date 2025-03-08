@@ -731,6 +731,7 @@ class LokFarmer:
     def socf_thread(self, radius, targets, share_to=None):
         """
         websocket connection of the field
+        Only scans for objects and logs them without starting marches
         :return:
         """
         while self.api.last_requested_at + 16 > time.time():
@@ -739,17 +740,18 @@ class LokFarmer:
             logger.info(f'last requested at {arrow.get(self.api.last_requested_at).humanize()}, waiting...')
             time.sleep(4)
 
-        self._update_march_limit()
-
-        while self._is_march_limit_exceeded():
-            nearest_end_time = sorted(
-                self.troop_queue,
-                key=lambda x: x.get('endTime') if x.get('endTime') else '9999-99-99T99:99:99.999Z'
-            )[0].get('endTime')
-            seconds = self.calc_time_diff_in_seconds(nearest_end_time)
-            logger.info(f'_is_march_limit_exceeded: wait {seconds} seconds')
-            time.sleep(seconds)
-            self._update_march_limit()
+        # Create object logger with a unique log file for each run
+        timestamp = arrow.now().format('YYYY-MM-DD_HH-mm-ss')
+        objects_logger = logging.getLogger(f'{__name__}.objects_{timestamp}')
+        objects_logger.setLevel(logging.INFO)
+        
+        # Create a file handler for the objects log
+        objects_formatter = logging.Formatter('%(asctime)s - %(message)s')
+        objects_file_handler = logging.FileHandler(project_root.joinpath(f'data/objects_{timestamp}.log'))
+        objects_file_handler.setFormatter(objects_formatter)
+        objects_logger.addHandler(objects_file_handler)
+        
+        objects_logger.info(f"Starting new object scanning session - {timestamp}")
 
         self.socf_entered = False
         self.socf_world_id = self.kingdom_enter.get('kingdom').get('worldId')
@@ -772,9 +774,6 @@ class LokFarmer:
 
             logger.debug(f'Processing {len(objects)} objects')
             for each_obj in objects:
-                if self._is_march_limit_exceeded():
-                    continue
-
                 code = each_obj.get('code')
                 level = each_obj.get('level')
                 loc = each_obj.get('loc')
@@ -784,50 +783,17 @@ class LokFarmer:
                     # not the one we are looking for
                     continue
 
-                if share_to and share_to.get('chat_channels'):
-                    for chat_channel in share_to.get('chat_channels'):
-                        text = f'Lv.{level}?fo_{code}'
-                        obj_hash = f'{text}_{loc[0]}_{loc[1]}_{loc[2]}'
-                        if obj_hash in self.shared_objects:
-                            # already shared
-                            continue
-
-                        self.shared_objects.add(obj_hash)
-                        self.api.chat_new(chat_channel, CHAT_TYPE_LOC, text, {'loc': loc})
-
-                if code == OBJECT_CODE_DRAGON_SOUL_CAVERN:
-                    if self.drago_action_point < 1:
-                        logger.info(f'no_drago_action_point, ignore: {each_obj}')
-                        continue
-                    if not self.available_dragos:
-                        logger.info(f'not_available_drago, ignore: {each_obj}')
-                        continue
-
                 level_whitelist = level_whitelist[0]
                 if level_whitelist and level not in level_whitelist:
                     logger.info(f'level not in whitelist, ignore: {each_obj}')
                     continue
 
-                res = False
-                try:
-                    if code in set(OBJECT_MINE_CODE_LIST).intersection(target_code_set):
-                        res = self._on_field_objects_gather(each_obj)
-
-                    if code in set(OBJECT_MONSTER_CODE_LIST).intersection(target_code_set):
-                        res = self._on_field_objects_monster(each_obj)
-                except OtherException as error_code:
-                    if str(error_code) in (
-                            'full_task', 'not_enough_troop', 'insufficient_actionpoint', 'not_open_gate',
-                            'no_drago_action_point', 'no_drago', 'exceed_crystal_daily_quota',
-                            'not_available_drago'
-                    ):
-                        logger.warning(f'on_field_objects: {error_code}, skip')
-                        self.field_object_processed = True
-                        return
-                    raise
-                else:
-                    if res is True:
-                        logger.info(f'march_started {code}({level}): {each_obj}')
+                # Log found objects that match our criteria
+                if code in set(OBJECT_MINE_CODE_LIST).intersection(target_code_set) or \
+                   code in set(OBJECT_MONSTER_CODE_LIST).intersection(target_code_set):
+                    obj_type = "Resource" if code in OBJECT_MINE_CODE_LIST else "Monster"
+                    objects_logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}")
+                    logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}")
 
             self.field_object_processed = True
 
@@ -888,6 +854,9 @@ class LokFarmer:
             sio.emit('/zone/leave/list/v2', message)
 
         logger.info('a loop is finished')
+        objects_logger.info("Finished object scanning session")
+        objects_file_handler.close()
+        objects_logger.removeHandler(objects_file_handler)
         sio.disconnect()
         sio.wait()
 

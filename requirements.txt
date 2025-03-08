@@ -6,6 +6,5 @@ tenacity==8.2.*
 schedule==1.2.*
 ratelimit==2.2.*
 python-socketio[client]<5
-numpy==1.24.*
 httpx[http2]==0.24.*
 pyjwt==2.7.*
