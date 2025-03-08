@@ -8,3 +8,4 @@ ratelimit==2.2.*
 python-socketio[client]<5
 httpx[http2]==0.24.*
 pyjwt==2.7.*
+git+https://github.com/hldh214/python-engineio-3-for-lokbot.git@v3.14.3
