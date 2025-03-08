@@ -41,12 +41,20 @@ def async_main(token):
     asyncio.run(async_farmer.parallel_buy_caravan())
 
 
-def main(token, captcha_solver_config=None):
+def main(token=None, captcha_solver_config=None):
     # async_main(token)
     # exit()
 
     if captcha_solver_config is None:
         captcha_solver_config = {}
+    
+    # Get token from environment variable if not provided
+    if token is None:
+        import os
+        token = os.getenv("AUTH_TOKEN")
+        if not token:
+            logger.error("No AUTH_TOKEN found in environment variables. Please add it to Secrets.")
+            return
 
     _id = lokbot.util.decode_jwt(token).get('_id')
     token_file = project_root.joinpath(f'data/{_id}.token')
@@ -56,7 +64,7 @@ def main(token, captcha_solver_config=None):
         try:
             farmer = LokFarmer(token_from_file, captcha_solver_config)
         except NoAuthException:
-            logger.info('Token is invalid, using token from command line')
+            logger.info('Token is invalid, using token from environment')
             farmer = LokFarmer(token, captcha_solver_config)
     else:
         farmer = LokFarmer(token, captcha_solver_config)
