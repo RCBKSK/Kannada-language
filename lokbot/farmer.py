@@ -793,8 +793,30 @@ class LokFarmer:
                 if code in set(OBJECT_MINE_CODE_LIST).intersection(target_code_set) or \
                    code in set(OBJECT_MONSTER_CODE_LIST).intersection(target_code_set):
                     obj_type = "Resource" if code in OBJECT_MINE_CODE_LIST else "Monster"
-                    objects_logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}")
-                    logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}")
+                    
+                    # Format status information
+                    status = "Available"
+                    occupied_info = ""
+                    
+                    if each_obj.get('occupied'):
+                        status = "Occupied"
+                        occupied = each_obj.get('occupied')
+                        occupied_info = f"""
+    Occupied by: {occupied.get('name', 'Unknown')}
+    Alliance: {occupied.get('allianceTag', 'None')}
+    From World: {occupied.get('worldId', 'Unknown')}
+    Started: {occupied.get('started', 'Unknown')}
+    Ended: {occupied.get('ended', 'Unknown')}"""
+                    
+                    # Log in the requested format
+                    log_message = f"""Found {obj_type}:
+Code - {code}
+Level - {level}
+Location - {loc}
+Status - {status}{occupied_info}"""
+                    
+                    objects_logger.info(log_message)
+                    logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}, Status: {status}")
 
             self.field_object_processed = True
 
