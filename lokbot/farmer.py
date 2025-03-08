@@ -845,9 +845,19 @@ Status - {status}{occupied_info}"""
                     if config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
                         try:
                             from lokbot.discord_webhook import DiscordWebhook
+                            
+                            # Get resource name based on code
+                            resource_name = "Unknown"
+                            if code == 20100105:
+                                resource_name = "Crystal Mine"
+                            elif code == 20100106:
+                                resource_name = "Dragon Soul Cavern"
+                            else:
+                                resource_name = f"Resource {code}"
+                                
                             webhook = DiscordWebhook(config.get('discord', {}).get('webhook_url'))
                             webhook.send_object_log(
-                                obj_type, 
+                                f"{obj_type} ({resource_name})", 
                                 code, 
                                 level, 
                                 loc, 
