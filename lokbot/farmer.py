@@ -13,7 +13,7 @@ import socketio
 import tenacity
 
 import lokbot.util
-from lokbot import logger, socf_logger, sock_logger, socc_logger
+from lokbot import logger, socf_logger, sock_logger, socc_logger, config
 from lokbot.client import LokBotApi
 from lokbot.enum import *
 from lokbot.exceptions import OtherException, FatalApiException
