@@ -741,34 +741,41 @@ class LokFarmer:
             logger.info(f'last requested at {arrow.get(self.api.last_requested_at).humanize()}, waiting...')
             time.sleep(4)
 
-        # Create timestamp for this scan session
-        timestamp = arrow.now().format('YYYY-MM-DD_HH-mm-ss')
+        # Create a timestamp for the session date (just the date, not time)
+        session_date = arrow.now().format('YYYY-MM-DD')
         
-        # Create main objects logger
-        objects_logger = logging.getLogger(f'{__name__}.objects_{timestamp}')
+        # Create main objects logger - use one file per day
+        objects_logger = logging.getLogger(f'{__name__}.objects')
+        # Clear any existing handlers to avoid duplicate logging
+        if objects_logger.hasHandlers():
+            objects_logger.handlers.clear()
         objects_logger.setLevel(logging.INFO)
         
         # Create a file handler for the main objects log
         objects_formatter = logging.Formatter('%(asctime)s - %(message)s')
-        objects_file_handler = logging.FileHandler(project_root.joinpath(f'data/objects_{timestamp}.log'))
+        objects_file_handler = logging.FileHandler(project_root.joinpath(f'data/objects_{session_date}.log'), mode='a')
         objects_file_handler.setFormatter(objects_formatter)
         objects_logger.addHandler(objects_file_handler)
         
-        # Create separate loggers for each object code
+        # Create separate loggers for each object code - one file per day
         code_loggers = {}
         for target in targets:
             code = target['code']
             code_name = "Crystal_Mine" if code == 20100105 else "Dragon_Soul_Cavern" if code == 20100106 else f"Code_{code}"
-            code_logger = logging.getLogger(f'{__name__}.{code_name}_{timestamp}')
+            code_logger = logging.getLogger(f'{__name__}.{code_name}')
+            # Clear any existing handlers to avoid duplicate logging
+            if code_logger.hasHandlers():
+                code_logger.handlers.clear()
             code_logger.setLevel(logging.INFO)
             
-            code_file_handler = logging.FileHandler(project_root.joinpath(f'data/{code_name}_{timestamp}.log'))
+            code_file_handler = logging.FileHandler(project_root.joinpath(f'data/{code_name}_{session_date}.log'), mode='a')
             code_file_handler.setFormatter(objects_formatter)
             code_logger.addHandler(code_file_handler)
             
             code_loggers[code] = code_logger
         
-        objects_logger.info(f"Starting new object scanning session - {timestamp}")
+        current_time = arrow.now().format('HH:mm:ss')
+        objects_logger.info(f"Starting new object scanning session at {current_time}")
 
         self.socf_entered = False
         self.socf_world_id = self.kingdom_enter.get('kingdom').get('worldId')
@@ -899,9 +906,8 @@ Status - {status}{occupied_info}"""
             sio.emit('/zone/leave/list/v2', message)
 
         logger.info('a loop is finished')
-        objects_logger.info("Finished object scanning session")
-        objects_file_handler.close()
-        objects_logger.removeHandler(objects_file_handler)
+        current_time = arrow.now().format('HH:mm:ss')
+        objects_logger.info(f"Finished object scanning session at {current_time}")
         sio.disconnect()
         sio.wait()
 
