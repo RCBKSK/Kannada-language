@@ -841,6 +841,22 @@ Status - {status}{occupied_info}"""
                     # Log to main objects file
                     objects_logger.info(log_message)
                     
+                    # Send to Discord if enabled
+                    if config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
+                        try:
+                            from lokbot.discord_webhook import DiscordWebhook
+                            webhook = DiscordWebhook(config.get('discord', {}).get('webhook_url'))
+                            webhook.send_object_log(
+                                obj_type, 
+                                code, 
+                                level, 
+                                loc, 
+                                status, 
+                                occupied_info.strip() if occupied_info else ""
+                            )
+                        except Exception as e:
+                            logger.error(f"Failed to send to Discord: {e}")
+                    
                     # Log to code-specific file if we have a logger for this code
                     if code in code_loggers:
                         code_loggers[code].info(log_message)
