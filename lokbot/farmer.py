@@ -841,8 +841,8 @@ Status - {status}{occupied_info}"""
                     # Log to main objects file
                     objects_logger.info(log_message)
                     
-                    # Send to Discord if enabled
-                    if config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
+                    # Send to Discord if enabled (only for level 2+)
+                    if level >= 2 and config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
                         try:
                             from lokbot.discord_webhook import DiscordWebhook
                             
