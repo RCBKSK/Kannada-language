@@ -741,16 +741,32 @@ class LokFarmer:
             logger.info(f'last requested at {arrow.get(self.api.last_requested_at).humanize()}, waiting...')
             time.sleep(4)
 
-        # Create object logger with a unique log file for each run
+        # Create timestamp for this scan session
         timestamp = arrow.now().format('YYYY-MM-DD_HH-mm-ss')
+        
+        # Create main objects logger
         objects_logger = logging.getLogger(f'{__name__}.objects_{timestamp}')
         objects_logger.setLevel(logging.INFO)
         
-        # Create a file handler for the objects log
+        # Create a file handler for the main objects log
         objects_formatter = logging.Formatter('%(asctime)s - %(message)s')
         objects_file_handler = logging.FileHandler(project_root.joinpath(f'data/objects_{timestamp}.log'))
         objects_file_handler.setFormatter(objects_formatter)
         objects_logger.addHandler(objects_file_handler)
+        
+        # Create separate loggers for each object code
+        code_loggers = {}
+        for target in targets:
+            code = target['code']
+            code_name = "Crystal_Mine" if code == 20100105 else "Dragon_Soul_Cavern" if code == 20100106 else f"Code_{code}"
+            code_logger = logging.getLogger(f'{__name__}.{code_name}_{timestamp}')
+            code_logger.setLevel(logging.INFO)
+            
+            code_file_handler = logging.FileHandler(project_root.joinpath(f'data/{code_name}_{timestamp}.log'))
+            code_file_handler.setFormatter(objects_formatter)
+            code_logger.addHandler(code_file_handler)
+            
+            code_loggers[code] = code_logger
         
         objects_logger.info(f"Starting new object scanning session - {timestamp}")
 
@@ -815,7 +831,13 @@ Level - {level}
 Location - {loc}
 Status - {status}{occupied_info}"""
                     
+                    # Log to main objects file
                     objects_logger.info(log_message)
+                    
+                    # Log to code-specific file if we have a logger for this code
+                    if code in code_loggers:
+                        code_loggers[code].info(log_message)
+                        
                     logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}, Status: {status}")
 
             self.field_object_processed = True
