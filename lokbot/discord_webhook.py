@@ -42,8 +42,7 @@ class DiscordWebhook:
                 {"name": "Level", "value": str(level), "inline": True},
                 {"name": "Location", "value": str(location), "inline": True},
                 {"name": "Status", "value": status, "inline": True}
-            ],
-            "footer": {"text": "League of Kingdoms Bot"}
+            ]
         }
         
         if occupied_info:
