@@ -12,7 +12,7 @@ author = 40310057
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python -m lokbot YOUR_X_ACCESS_TOKEN"
+args = "python -m lokbot eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NzQ1NWIwYzIyZmI0ODRhMDVkYTg3ZWQiLCJraW5nZG9tSWQiOiI2NzQ1NWIwZDIyZmI0ODRhMDVkYTg3ZjQiLCJ3b3JsZElkIjo2MSwidmVyc2lvbiI6MTc4OSwiYXV0aFR5cGUiOiJjYXJ2IiwicGxhdGZvcm0iOiJ3ZWIiLCJ0aW1lIjoxNzQxNDUwODg4NDEwLCJjbGllbnRYb3IiOiIwIiwiaXAiOiIzNC40Ny4xNTguMzQiLCJpYXQiOjE3NDE0NTA4ODgsImV4cCI6MTc0MjA1NTY4OCwiaXNzIjoibm9kZ2FtZXMuY29tIiwic3ViIjoidXNlckluZm8ifQ.roDI3lIq9MSyJDUC59q6vkNwi4eQWMwB_HPKOOLOKNQ"
 
 [[workflows.workflow]]
 name = "Run"
