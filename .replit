@@ -4,7 +4,7 @@ modules = ["python-3.12", "bash"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Run Bot"
+runButton = "Run"
 
 [[workflows.workflow]]
 name = "Run Bot"
@@ -13,3 +13,11 @@ author = 40310057
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python -m lokbot YOUR_X_ACCESS_TOKEN"
+
+[[workflows.workflow]]
+name = "Run"
+author = 40310057
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m lokbot"
