@@ -841,8 +841,8 @@ Status - {status}{occupied_info}"""
                     # Log to main objects file
                     objects_logger.info(log_message)
 
-                    # Send to Discord if enabled (only for level 2+)
-                    if level >= 2 and config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
+                    # Send to Discord if enabled
+                    if config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
                         try:
                             from lokbot.discord_webhook import DiscordWebhook
 
@@ -855,22 +855,23 @@ Status - {status}{occupied_info}"""
                             else:
                                 resource_name = f"Resource {code}"
 
-                            # Send to main Discord webhook
-                            webhook = DiscordWebhook(config.get('discord', {}).get('webhook_url'))
-                            webhook.send_object_log(
-                                f"{obj_type} ({resource_name})", 
-                                code, 
-                                level, 
-                                loc, 
-                                status, 
-                                occupied_info.strip() if occupied_info else ""
-                            )
-
-                            # Send level 1 Crystal Mines to specialized webhook
+                            # Special handling for level 1 Crystal Mines
                             if code == 20100105 and level == 1 and config.get('discord', {}).get('crystal_mine_level1_webhook_url'):
                                 level1_webhook = DiscordWebhook(config.get('discord', {}).get('crystal_mine_level1_webhook_url'))
                                 level1_webhook.send_object_log(
                                     f"{obj_type} (Level 1 {resource_name})", 
+                                    code, 
+                                    level, 
+                                    loc, 
+                                    status, 
+                                    occupied_info.strip() if occupied_info else ""
+                                )
+
+                            # For other resources or level 2+ crystal mines, send to main webhook
+                            if level >= 2 or code != 20100105:
+                                webhook = DiscordWebhook(config.get('discord', {}).get('webhook_url'))
+                                webhook.send_object_log(
+                                    f"{obj_type} ({resource_name})", 
                                     code, 
                                     level, 
                                     loc, 
