@@ -743,20 +743,20 @@ class LokFarmer:
 
         # Create a timestamp for the session date (just the date, not time)
         session_date = arrow.now().format('YYYY-MM-DD')
-        
+
         # Create main objects logger - use one file per day
         objects_logger = logging.getLogger(f'{__name__}.objects')
         # Clear any existing handlers to avoid duplicate logging
         if objects_logger.hasHandlers():
             objects_logger.handlers.clear()
         objects_logger.setLevel(logging.INFO)
-        
+
         # Create a file handler for the main objects log
         objects_formatter = logging.Formatter('%(asctime)s - %(message)s')
         objects_file_handler = logging.FileHandler(project_root.joinpath(f'data/objects_{session_date}.log'), mode='a')
         objects_file_handler.setFormatter(objects_formatter)
         objects_logger.addHandler(objects_file_handler)
-        
+
         # Create separate loggers for each object code - one file per day
         code_loggers = {}
         for target in targets:
@@ -767,13 +767,13 @@ class LokFarmer:
             if code_logger.hasHandlers():
                 code_logger.handlers.clear()
             code_logger.setLevel(logging.INFO)
-            
+
             code_file_handler = logging.FileHandler(project_root.joinpath(f'data/{code_name}_{session_date}.log'), mode='a')
             code_file_handler.setFormatter(objects_formatter)
             code_logger.addHandler(code_file_handler)
-            
+
             code_loggers[code] = code_logger
-        
+
         current_time = arrow.now().format('HH:mm:ss')
         objects_logger.info(f"Starting new object scanning session at {current_time}")
 
@@ -816,11 +816,11 @@ class LokFarmer:
                 if code in set(OBJECT_MINE_CODE_LIST).intersection(target_code_set) or \
                    code in set(OBJECT_MONSTER_CODE_LIST).intersection(target_code_set):
                     obj_type = "Resource" if code in OBJECT_MINE_CODE_LIST else "Monster"
-                    
+
                     # Format status information
                     status = "Available"
                     occupied_info = ""
-                    
+
                     if each_obj.get('occupied'):
                         status = "Occupied"
                         occupied = each_obj.get('occupied')
@@ -830,22 +830,22 @@ class LokFarmer:
     From World: {occupied.get('worldId', 'Unknown')}
     Started: {occupied.get('started', 'Unknown')}
     Ended: {occupied.get('ended', 'Unknown')}"""
-                    
+
                     # Log in the requested format
                     log_message = f"""Found {obj_type}:
 Code - {code}
 Level - {level}
 Location - {loc}
 Status - {status}{occupied_info}"""
-                    
+
                     # Log to main objects file
                     objects_logger.info(log_message)
-                    
+
                     # Send to Discord if enabled (only for level 2+)
                     if level >= 2 and config.get('discord', {}).get('enabled', False) and config.get('discord', {}).get('webhook_url'):
                         try:
                             from lokbot.discord_webhook import DiscordWebhook
-                            
+
                             # Get resource name based on code
                             resource_name = "Unknown"
                             if code == 20100105:
@@ -854,7 +854,8 @@ Status - {status}{occupied_info}"""
                                 resource_name = "Dragon Soul Cavern"
                             else:
                                 resource_name = f"Resource {code}"
-                                
+
+                            # Send to main Discord webhook
                             webhook = DiscordWebhook(config.get('discord', {}).get('webhook_url'))
                             webhook.send_object_log(
                                 f"{obj_type} ({resource_name})", 
@@ -864,13 +865,25 @@ Status - {status}{occupied_info}"""
                                 status, 
                                 occupied_info.strip() if occupied_info else ""
                             )
+
+                            # Send level 1 Crystal Mines to specialized webhook
+                            if code == 20100105 and level == 1 and config.get('discord', {}).get('crystal_mine_level1_webhook_url'):
+                                level1_webhook = DiscordWebhook(config.get('discord', {}).get('crystal_mine_level1_webhook_url'))
+                                level1_webhook.send_object_log(
+                                    f"{obj_type} (Level 1 {resource_name})", 
+                                    code, 
+                                    level, 
+                                    loc, 
+                                    status, 
+                                    occupied_info.strip() if occupied_info else ""
+                                )
                         except Exception as e:
                             logger.error(f"Failed to send to Discord: {e}")
-                    
+
                     # Log to code-specific file if we have a logger for this code
                     if code in code_loggers:
                         code_loggers[code].info(log_message)
-                        
+
                     logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}, Status: {status}")
 
             self.field_object_processed = True
