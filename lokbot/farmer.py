@@ -867,7 +867,19 @@ Status - {status}{occupied_info}"""
                                     occupied_info.strip() if occupied_info else ""
                                 )
 
-                            # For other resources or level 2+ crystal mines, send to main webhook
+                            # For level 2+ resources, send to dedicated webhook if configured
+                            if level >= 2 and config.get('discord', {}).get('level2plus_webhook_url'):
+                                level2plus_webhook = DiscordWebhook(config.get('discord', {}).get('level2plus_webhook_url'))
+                                level2plus_webhook.send_object_log(
+                                    f"{obj_type} (Level {level} {resource_name})", 
+                                    code, 
+                                    level, 
+                                    loc, 
+                                    status, 
+                                    occupied_info.strip() if occupied_info else ""
+                                )
+                                
+                            # Also send to main webhook for all resources except level 1 crystal mines
                             if level >= 2 or code != 20100105:
                                 webhook = DiscordWebhook(config.get('discord', {}).get('webhook_url'))
                                 webhook.send_object_log(
