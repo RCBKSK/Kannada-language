@@ -185,6 +185,27 @@ async def on_ready():
     await tree.sync()
     print(f"Discord bot is ready! Logged in as {client.user}")
 
+def run_http_server():
+    """Run a simple HTTP server to keep the bot alive"""
+    import http.server
+    import threading
+    
+    class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'LokBot is running\n')
+    
+    port = int(os.environ.get('PORT', 3000))
+    server = http.server.HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
+    
+    # Start server in a separate thread
+    thread = threading.Thread(target=server.serve_forever)
+    thread.daemon = True
+    thread.start()
+    print(f"HTTP server started on port {port}")
+
 def run_discord_bot():
     # Get the token from environment variable
     token = os.getenv("DISCORD_BOT_TOKEN")
@@ -192,6 +213,10 @@ def run_discord_bot():
         print("Error: DISCORD_BOT_TOKEN not found in environment")
         return
     
+    # Start HTTP server to keep the bot alive
+    run_http_server()
+    
+    # Run the Discord bot
     client.run(token)
 
 if __name__ == "__main__":
