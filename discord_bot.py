@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands
 import os
@@ -24,7 +23,7 @@ tree = app_commands.CommandTree(client)
 @tree.command(name="start", description="Start the LokBot with your token")
 async def start_bot(interaction: discord.Interaction, token: str):
     user_id = str(interaction.user.id)
-    
+
     # Check if this user already has a bot running
     if user_id in bot_processes and bot_processes[user_id]["process"].poll() is None:
         await interaction.response.send_message("You already have a bot running! Stop it first with `/stop`", ephemeral=True)
@@ -39,7 +38,7 @@ async def start_bot(interaction: discord.Interaction, token: str):
     except Exception as e:
         await interaction.response.send_message(f"Error validating token: {str(e)}", ephemeral=True)
         return
-    
+
     # Use deferred response with error handling
     try:
         await interaction.response.defer(ephemeral=True)
@@ -47,35 +46,35 @@ async def start_bot(interaction: discord.Interaction, token: str):
     except discord.errors.NotFound:
         interaction_valid = False
         return
-    
+
     # Start the bot in a subprocess
     try:
         # Create a config for this user
         config_path = f"data/config_{user_id}.json"
         with open("config.json", "r") as f:
             config = json.load(f)
-        
+
         with open(config_path, "w") as f:
             json.dump(config, f)
-        
+
         process = subprocess.Popen(["python", "-m", "lokbot", token], 
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT,
                                   text=True)
-        
+
         bot_processes[user_id] = {
             "process": process,
             "token": token,
             "config_path": config_path
         }
-        
+
         # Send confirmation if interaction is still valid
         if interaction_valid:
             await interaction.followup.send(f"LokBot started successfully!", ephemeral=True)
-        
+
         # Start log monitoring
         asyncio.create_task(monitor_logs(interaction.user, process))
-        
+
     except Exception as e:
         if interaction_valid:
             await interaction.followup.send(f"Error starting bot: {str(e)}", ephemeral=True)
@@ -84,11 +83,11 @@ async def start_bot(interaction: discord.Interaction, token: str):
 @tree.command(name="stop", description="Stop your running LokBot")
 async def stop_bot(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
-    
+
     if user_id not in bot_processes:
         await interaction.response.send_message("You don't have a bot running!", ephemeral=True)
         return
-    
+
     try:
         # Try to defer, but handle the case if interaction has already expired
         try:
@@ -97,7 +96,7 @@ async def stop_bot(interaction: discord.Interaction):
         except discord.errors.NotFound:
             # Interaction already timed out or doesn't exist
             interaction_valid = False
-        
+
         # Terminate the process
         process = bot_processes[user_id]["process"]
         if process.poll() is None:  # Process is still running
@@ -106,14 +105,14 @@ async def stop_bot(interaction: discord.Interaction):
                 process.wait(timeout=5)  # Wait for process to terminate
             except subprocess.TimeoutExpired:
                 process.kill()  # Force kill if needed
-        
+
         # Send confirmation only if interaction is still valid
         if interaction_valid:
             await interaction.followup.send("LokBot stopped successfully", ephemeral=True)
-        
+
         # Clean up
         del bot_processes[user_id]
-        
+
     except Exception as e:
         if interaction_valid:
             await interaction.followup.send(f"Error stopping bot: {str(e)}", ephemeral=True)
@@ -122,7 +121,7 @@ async def stop_bot(interaction: discord.Interaction):
 @tree.command(name="status", description="Check if your LokBot is running")
 async def status(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
-    
+
     try:
         # Use defer but handle if interaction expired
         try:
@@ -132,7 +131,7 @@ async def status(interaction: discord.Interaction):
             # Interaction already timed out
             interaction_valid = False
             return
-        
+
         if user_id in bot_processes:
             process = bot_processes[user_id]["process"]
             if process.poll() is None:  # Process is still running
@@ -151,7 +150,7 @@ async def monitor_logs(user, process):
     """Monitor bot status and display application logs"""
     try:
         await user.send("✅ Your LokBot has started successfully!")
-        
+
         # Function to read output without blocking
         async def read_output():
             if process.stdout.readable():
@@ -159,22 +158,22 @@ async def monitor_logs(user, process):
                 if line:
                     return line.strip()
             return None
-        
+
         while True:
             # Check if process has ended
             if process.poll() is not None:
                 break
-                
+
             # Try to read a line (non-blocking)
             line = await asyncio.get_event_loop().run_in_executor(None, process.stdout.readline)
-            
+
             if line:
                 # Print to Replit console
                 print(line.strip())
-            
+
             # Always wait a bit before checking again
             await asyncio.sleep(0.1)
-        
+
         # Only notify when the process has ended
         await user.send("❌ Your LokBot has stopped running.")
     except Exception as e:
@@ -191,8 +190,9 @@ def run_discord_bot():
     if not token:
         print("Error: DISCORD_BOT_TOKEN not found in environment")
         return
-    
+
     client.run(token)
 
 if __name__ == "__main__":
+    # Run Discord bot in main thread
     run_discord_bot()
