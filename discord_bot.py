@@ -77,7 +77,8 @@ async def start_bot(interaction: discord.Interaction, token: str):
         process = subprocess.Popen(["python", "-m", "lokbot", token], 
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT,
-                                  text=True)
+                                  text=True,
+                                  bufsize=1)  # Line buffered output
 
         bot_processes[user_id] = {
             "process": process,
@@ -169,31 +170,43 @@ async def monitor_logs(user, process):
     """Monitor bot status and display application logs"""
     try:
         await user.send("✅ Your LokBot has started successfully!")
-
-        # Function to read output without blocking
-        async def read_output():
-            if process.stdout.readable():
-                line = process.stdout.readline()
-                if line:
-                    return line.strip()
-            return None
-
-        while True:
-            # Check if process has ended
-            if process.poll() is not None:
-                break
-
-            # Try to read a line (non-blocking)
-            line = await asyncio.get_event_loop().run_in_executor(None, process.stdout.readline)
-
-            if line:
-                # Print to Replit console
-                print(line.strip())
-
-            # Always wait a bit before checking again
-            await asyncio.sleep(0.1)
-
-        # Only notify when the process has ended
+        
+        # Create a task to continuously read and display output
+        async def read_output_continuously():
+            while process.poll() is None:  # While process is still running
+                try:
+                    # Read line from stdout (non-blocking)
+                    if process.stdout:
+                        line = await asyncio.get_event_loop().run_in_executor(None, process.stdout.readline)
+                        if line:
+                            line_text = line.strip().decode('utf-8', errors='replace') \
+                                if isinstance(line, bytes) else line.strip()
+                            # Print to Replit console
+                            print(f"[LokBot] {line_text}")
+                            
+                            # Optionally, send important log messages to the user
+                            if "ERROR" in line_text or "CRITICAL" in line_text:
+                                try:
+                                    await user.send(f"⚠️ **Alert**: {line_text}")
+                                except:
+                                    pass  # Ignore if can't send to user
+                except Exception as read_err:
+                    print(f"Error reading output: {str(read_err)}")
+                
+                # Small delay to avoid high CPU usage
+                await asyncio.sleep(0.1)
+        
+        # Start reading output in the background
+        output_task = asyncio.create_task(read_output_continuously())
+        
+        # Wait for process to complete
+        while process.poll() is None:
+            await asyncio.sleep(1)
+            
+        # Cancel the output reading task when process ends
+        output_task.cancel()
+            
+        # Notify when the process has ended
         await user.send("❌ Your LokBot has stopped running.")
     except Exception as e:
         print(f"Error in status monitoring: {str(e)}")
