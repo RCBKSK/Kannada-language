@@ -148,20 +148,17 @@ async def status(interaction: discord.Interaction):
         print(f"Error checking status: {str(e)}")
 
 async def monitor_logs(user, process):
-    """Monitor and send process logs to user via DM"""
-    for line in iter(process.stdout.readline, ''):
-        if not line:
-            break
+    """Monitor bot status only"""
+    try:
+        await user.send("✅ Your LokBot has started successfully!")
         
-        # Filter sensitive info from logs
-        filtered_line = line
+        # Wait for process to end
+        process.wait()
         
-        # Only send important log messages to avoid spam
-        if "ERROR" in line or "WARNING" in line or "INFO" in line:
-            try:
-                await user.send(f"```{filtered_line[:1900]}```")  # Discord message limit
-            except:
-                pass  # User might have DMs disabled
+        # Only notify when the process has ended
+        await user.send("❌ Your LokBot has stopped running.")
+    except Exception as e:
+        print(f"Error in status monitoring: {str(e)}")
 
 @client.event
 async def on_ready():
