@@ -226,8 +226,8 @@ def run_http_server():
             self.send_header('Content-Type', 'text/plain')
             self.end_headers()
 
-    # Use the PORT environment variable provided by Render
-    port = int(os.environ.get('PORT', 3000))
+    # Use the PORT environment variable provided by Render, default to 10000 as detected
+    port = int(os.environ.get('PORT', 10000))
     server = http.server.HTTPServer(('0.0.0.0', port),
                                     SimpleHTTPRequestHandler)
 
@@ -249,7 +249,16 @@ def run_discord_bot():
     run_http_server()
 
     try:
-        logger.info(f"Starting Discord bot at {os.environ.get('PORT', 3000)}")
+        logger.info(f"Starting Discord bot at port {os.environ.get('PORT', 10000)}")
+        # Check token and API connectivity
+        if not token:
+            logger.error("ERROR: DISCORD_BOT_TOKEN not provided")
+            # Keep server running even with invalid token
+            import time
+            while True:
+                time.sleep(60)
+                logger.info("HTTP server still alive, waiting for valid token...")
+                
         # Run the Discord bot
         client.run(token)
     except Exception as e:
@@ -257,6 +266,12 @@ def run_discord_bot():
         # Print full exception details
         import traceback
         traceback.print_exc()
+        
+        # Keep the HTTP server running even if the bot crashes
+        import time
+        while True:
+            time.sleep(60)
+            logger.info("HTTP server still alive despite bot crash, waiting for restart...")
 
 
 if __name__ == "__main__":
