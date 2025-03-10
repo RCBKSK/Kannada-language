@@ -148,15 +148,24 @@ async def status(interaction: discord.Interaction):
         print(f"Error checking status: {str(e)}")
 
 async def monitor_logs(user, process):
-    """Monitor bot status only"""
+    """Monitor bot status and display application logs"""
     try:
         await user.send("✅ Your LokBot has started successfully!")
         
-        # Wait for process to end in a non-blocking way
-        while True:
-            if process.poll() is not None:  # Process has ended
+        # Read and print output to the console for visibility in Replit
+        for line in iter(process.stdout.readline, ''):
+            if not line:
                 break
-            await asyncio.sleep(2)  # Check every 2 seconds without blocking
+            
+            # Print to Replit console
+            print(line.strip())
+            
+            # Wait for process to end if no more output
+            if process.poll() is not None:
+                break
+                
+            # Non-blocking sleep to prevent CPU overload
+            await asyncio.sleep(0.1)
         
         # Only notify when the process has ended
         await user.send("❌ Your LokBot has stopped running.")
