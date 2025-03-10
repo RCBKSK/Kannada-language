@@ -194,6 +194,20 @@ async def monitor_logs(user, process):
         startup_complete = False
         output_buffer = []
         
+        # Set subprocess pipes to non-blocking mode
+        import fcntl
+        import os
+        
+        # Set stdout to non-blocking
+        stdout_fd = process.stdout.fileno()
+        fl = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
+        fcntl.fcntl(stdout_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        
+        # Set stderr to non-blocking
+        stderr_fd = process.stderr.fileno()
+        fl = fcntl.fcntl(stderr_fd, fcntl.F_GETFL)
+        fcntl.fcntl(stderr_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        
         while True:
             # Check if process has ended
             if process.poll() is not None:
@@ -207,45 +221,51 @@ async def monitor_logs(user, process):
                     await user.send(error_message)
                 break
 
-            # Read output from the subprocess
-            output = process.stdout.readline()
-            if output:
-                stripped_output = output.strip()
-                logger.info(f"LokBot Output: {stripped_output}")
-                
-                # Store recent outputs for error analysis
-                output_buffer.append(stripped_output)
-                if len(output_buffer) > 10:  # Keep only the last 10 messages
-                    output_buffer.pop(0)
-                
-                # Check for successful startup
-                if "kingdom/enter" in stripped_output and "result\": true" in stripped_output:
-                    if not startup_complete:
-                        startup_complete = True
-                        await user.send("✅ LokBot has successfully connected to the game server!")
-                
-                # Don't send regular log output to Discord - only log to server logs
+            # Try to read output without blocking
+            try:
+                output = process.stdout.readline()
+                if output:
+                    stripped_output = output.strip()
+                    logger.info(f"LokBot Output: {stripped_output}")
+                    
+                    # Store recent outputs for error analysis
+                    output_buffer.append(stripped_output)
+                    if len(output_buffer) > 10:  # Keep only the last 10 messages
+                        output_buffer.pop(0)
+                    
+                    # Check for successful startup
+                    if "kingdom/enter" in stripped_output and "result\": true" in stripped_output:
+                        if not startup_complete:
+                            startup_complete = True
+                            await user.send("✅ LokBot has successfully connected to the game server!")
+            except (BlockingIOError, IOError):
+                # No data available right now, continue
+                pass
 
-            # Read errors from the subprocess
-            error = process.stderr.readline()
-            if error:
-                stripped_error = error.strip()
-                logger.error(f"LokBot Error: {stripped_error}")
-                
-                # Detect auth errors
-                if "NoAuthException" in stripped_error or "auth/connect" in stripped_error:
-                    auth_error_detected = True
-                    # Send auth error message
-                    await user.send("❌ Authentication failed! Your token appears to be invalid or expired. Please get a new token and try again.")
-                    return
-                
-                # Only send critical errors to Discord
-                if "CRITICAL" in stripped_error or "ERROR" in stripped_error or "FATAL" in stripped_error:
-                    try:
-                        error_message = "❌ Critical error detected. Check logs for details."
-                        await user.send(error_message)
-                    except discord.errors.HTTPException as e:
-                        logger.error(f"Failed to send Discord error message: {str(e)}")
+            # Try to read errors without blocking
+            try:
+                error = process.stderr.readline()
+                if error:
+                    stripped_error = error.strip()
+                    logger.error(f"LokBot Error: {stripped_error}")
+                    
+                    # Detect auth errors
+                    if "NoAuthException" in stripped_error or "auth/connect" in stripped_error:
+                        auth_error_detected = True
+                        # Send auth error message
+                        await user.send("❌ Authentication failed! Your token appears to be invalid or expired. Please get a new token and try again.")
+                        return
+                    
+                    # Only send critical errors to Discord
+                    if "CRITICAL" in stripped_error or "ERROR" in stripped_error or "FATAL" in stripped_error:
+                        try:
+                            error_message = "❌ Critical error detected. Check logs for details."
+                            await user.send(error_message)
+                        except discord.errors.HTTPException as e:
+                            logger.error(f"Failed to send Discord error message: {str(e)}")
+            except (BlockingIOError, IOError):
+                # No data available right now, continue
+                pass
 
             # Wait a bit before checking again
             await asyncio.sleep(0.1)
@@ -254,7 +274,11 @@ async def monitor_logs(user, process):
         await user.send("❌ Your LokBot has stopped running.")
     except Exception as e:
         logger.error(f"Error in status monitoring: {str(e)}")
-        await user.send(f"Error in status monitoring: {str(e)}")
+        try:
+            # Use a shorter message to avoid potential Discord issues
+            await user.send("❌ Error monitoring LokBot status. Check server logs for details.")
+        except:
+            logger.error("Failed to send error message to user")
 
 
 @client.event
