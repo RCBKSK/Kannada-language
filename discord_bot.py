@@ -81,9 +81,22 @@ async def start_bot(interaction: discord.Interaction, token: str):
         # Make sure data directory exists
         os.makedirs("data", exist_ok=True)
         
-        # Run the main function directly to avoid command-line argument parsing issues
+        # Create a helper script to run LokBot
+        helper_script = "data/run_lokbot.py"
+        with open(helper_script, "w") as f:
+            f.write("""
+import os
+import sys
+sys.path.append('.')
+from lokbot.app import main
+
+if __name__ == "__main__":
+    main()
+""")
+        
+        # Run the helper script with proper environment
         process = subprocess.Popen(
-            ["python", "-c", "from lokbot.app import main; main()"], 
+            ["python", helper_script], 
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
