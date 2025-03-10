@@ -29,3 +29,7 @@ author = 40352559
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python discord_bot.py"
+
+[[ports]]
+localPort = 3001
+externalPort = 80
