@@ -5,12 +5,28 @@ import subprocess
 import json
 import signal
 import asyncio
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
 from lokbot.util import decode_jwt
 from lokbot.app import main
 
 # Load environment variables
 load_dotenv()
+
+# Simple HTTP server for keeping the bot alive
+class KeepAliveServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Discord Bot is running\n')
+
+def run_keep_alive_server(port=3001):
+    server_address = ('0.0.0.0', port)
+    httpd = HTTPServer(server_address, KeepAliveServer)
+    print(f"Starting Discord Bot HTTP server on port {port}")
+    httpd.serve_forever()
 
 # Bot processes dictionary to track running instances
 bot_processes = {}
@@ -194,5 +210,11 @@ def run_discord_bot():
     client.run(token)
 
 if __name__ == "__main__":
+    # Start HTTP server in a separate thread
+    port = int(os.getenv("DISCORD_BOT_PORT", 3001))
+    http_thread = threading.Thread(target=run_keep_alive_server, args=(port,), daemon=True)
+    http_thread.start()
+    print(f"Discord Bot HTTP server started on port {port}")
+    
     # Run Discord bot in main thread
     run_discord_bot()
