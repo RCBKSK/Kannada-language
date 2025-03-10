@@ -152,8 +152,11 @@ async def monitor_logs(user, process):
     try:
         await user.send("✅ Your LokBot has started successfully!")
         
-        # Wait for process to end
-        process.wait()
+        # Wait for process to end in a non-blocking way
+        while True:
+            if process.poll() is not None:  # Process has ended
+                break
+            await asyncio.sleep(2)  # Check every 2 seconds without blocking
         
         # Only notify when the process has ended
         await user.send("❌ Your LokBot has stopped running.")
