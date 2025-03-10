@@ -226,7 +226,16 @@ async def monitor_logs(user, process):
                 
                 # Only send non-debug messages to the user
                 if not stripped_output.startswith("DEBUG") and not "DEBUG" in stripped_output[:20]:
-                    await user.send(f"LokBot: {stripped_output}")
+                    # Truncate message if it's too long for Discord (2000 char limit)
+                    message = f"LokBot: {stripped_output}"
+                    if len(message) > 1950:  # Leave some buffer
+                        message = message[:1947] + "..."
+                    try:
+                        await user.send(message)
+                    except discord.errors.HTTPException as e:
+                        logger.error(f"Failed to send Discord message: {str(e)}")
+                        # Try sending a shortened version
+                        await user.send(f"LokBot: [Message too long to display] - Check logs for details")
 
             # Read errors from the subprocess
             error = process.stderr.readline()
@@ -238,7 +247,16 @@ async def monitor_logs(user, process):
                 if "NoAuthException" in stripped_error or "auth/connect" in stripped_error:
                     auth_error_detected = True
                 
-                await user.send(f"❌ Error: {stripped_error}")
+                # Truncate error message if needed
+                error_message = f"❌ Error: {stripped_error}"
+                if len(error_message) > 1950:  # Leave some buffer
+                    error_message = error_message[:1947] + "..."
+                    
+                try:
+                    await user.send(error_message)
+                except discord.errors.HTTPException as e:
+                    logger.error(f"Failed to send Discord error message: {str(e)}")
+                    await user.send(f"❌ Error: [Message too long to display] - Check logs for details")
                 
                 # Provide immediate feedback for auth errors
                 if auth_error_detected and not startup_complete:
