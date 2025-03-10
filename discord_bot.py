@@ -40,8 +40,13 @@ async def start_bot(interaction: discord.Interaction, token: str):
         await interaction.response.send_message(f"Error validating token: {str(e)}", ephemeral=True)
         return
     
-    # Use deferred response since starting might take more than 3 seconds
-    await interaction.response.defer(ephemeral=True)
+    # Use deferred response with error handling
+    try:
+        await interaction.response.defer(ephemeral=True)
+        interaction_valid = True
+    except discord.errors.NotFound:
+        interaction_valid = False
+        return
     
     # Start the bot in a subprocess
     try:
@@ -64,14 +69,17 @@ async def start_bot(interaction: discord.Interaction, token: str):
             "config_path": config_path
         }
         
-        # Send confirmation
-        await interaction.followup.send(f"LokBot started successfully!", ephemeral=True)
+        # Send confirmation if interaction is still valid
+        if interaction_valid:
+            await interaction.followup.send(f"LokBot started successfully!", ephemeral=True)
         
         # Start log monitoring
         asyncio.create_task(monitor_logs(interaction.user, process))
         
     except Exception as e:
-        await interaction.followup.send(f"Error starting bot: {str(e)}", ephemeral=True)
+        if interaction_valid:
+            await interaction.followup.send(f"Error starting bot: {str(e)}", ephemeral=True)
+        print(f"Error starting bot: {str(e)}")
 
 @tree.command(name="stop", description="Stop your running LokBot")
 async def stop_bot(interaction: discord.Interaction):
@@ -81,10 +89,15 @@ async def stop_bot(interaction: discord.Interaction):
         await interaction.response.send_message("You don't have a bot running!", ephemeral=True)
         return
     
-    # Use deferred response since stopping might take more than 3 seconds
-    await interaction.response.defer(ephemeral=True)
-    
     try:
+        # Try to defer, but handle the case if interaction has already expired
+        try:
+            await interaction.response.defer(ephemeral=True)
+            interaction_valid = True
+        except discord.errors.NotFound:
+            # Interaction already timed out or doesn't exist
+            interaction_valid = False
+        
         # Terminate the process
         process = bot_processes[user_id]["process"]
         if process.poll() is None:  # Process is still running
@@ -93,31 +106,46 @@ async def stop_bot(interaction: discord.Interaction):
                 process.wait(timeout=5)  # Wait for process to terminate
             except subprocess.TimeoutExpired:
                 process.kill()  # Force kill if needed
-                
-        await interaction.followup.send("LokBot stopped successfully", ephemeral=True)
+        
+        # Send confirmation only if interaction is still valid
+        if interaction_valid:
+            await interaction.followup.send("LokBot stopped successfully", ephemeral=True)
         
         # Clean up
         del bot_processes[user_id]
         
     except Exception as e:
-        await interaction.followup.send(f"Error stopping bot: {str(e)}", ephemeral=True)
+        if interaction_valid:
+            await interaction.followup.send(f"Error stopping bot: {str(e)}", ephemeral=True)
+        print(f"Error stopping bot: {str(e)}")
 
 @tree.command(name="status", description="Check if your LokBot is running")
 async def status(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     
-    # Use defer for consistency, even though this is usually quick
-    await interaction.response.defer(ephemeral=True)
-    
-    if user_id in bot_processes:
-        process = bot_processes[user_id]["process"]
-        if process.poll() is None:  # Process is still running
-            await interaction.followup.send("Your LokBot is currently running", ephemeral=True)
+    try:
+        # Use defer but handle if interaction expired
+        try:
+            await interaction.response.defer(ephemeral=True)
+            interaction_valid = True
+        except discord.errors.NotFound:
+            # Interaction already timed out
+            interaction_valid = False
+            return
+        
+        if user_id in bot_processes:
+            process = bot_processes[user_id]["process"]
+            if process.poll() is None:  # Process is still running
+                await interaction.followup.send("Your LokBot is currently running", ephemeral=True)
+            else:
+                await interaction.followup.send("Your LokBot process has ended", ephemeral=True)
+                del bot_processes[user_id]
         else:
-            await interaction.followup.send("Your LokBot process has ended", ephemeral=True)
-            del bot_processes[user_id]
-    else:
-        await interaction.followup.send("You don't have a LokBot running", ephemeral=True)
+            await interaction.followup.send("You don't have a LokBot running", ephemeral=True)
+    except Exception as e:
+        if interaction_valid:
+            await interaction.followup.send(f"Error checking status: {str(e)}", ephemeral=True)
+        print(f"Error checking status: {str(e)}")
 
 async def monitor_logs(user, process):
     """Monitor and send process logs to user via DM"""
