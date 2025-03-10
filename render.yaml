@@ -10,4 +10,8 @@ services:
         sync: false
       - key: PORT
         value: 10000
+      # Adding debugging environment variables
+      - key: PYTHONUNBUFFERED
+        value: "1"
     plan: free
+    healthCheckPath: /

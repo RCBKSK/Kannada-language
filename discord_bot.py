@@ -218,8 +218,15 @@ def run_discord_bot():
     # Start HTTP server to keep the bot alive
     run_http_server()
     
-    # Run the Discord bot
-    client.run(token)
+    try:
+        print(f"Starting Discord bot at {os.environ.get('PORT', 3000)}")
+        # Run the Discord bot
+        client.run(token)
+    except Exception as e:
+        print(f"CRITICAL ERROR: Discord bot crashed: {str(e)}")
+        # Print full exception details
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     run_discord_bot()
