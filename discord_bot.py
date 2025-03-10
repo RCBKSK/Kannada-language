@@ -40,7 +40,8 @@ async def start_bot(interaction: discord.Interaction, token: str):
         await interaction.response.send_message(f"Error validating token: {str(e)}", ephemeral=True)
         return
     
-    await interaction.response.send_message(f"Starting LokBot...", ephemeral=True)
+    # Use deferred response since starting might take more than 3 seconds
+    await interaction.response.defer(ephemeral=True)
     
     # Start the bot in a subprocess
     try:
@@ -80,6 +81,9 @@ async def stop_bot(interaction: discord.Interaction):
         await interaction.response.send_message("You don't have a bot running!", ephemeral=True)
         return
     
+    # Use deferred response since stopping might take more than 3 seconds
+    await interaction.response.defer(ephemeral=True)
+    
     try:
         # Terminate the process
         process = bot_processes[user_id]["process"]
@@ -90,27 +94,30 @@ async def stop_bot(interaction: discord.Interaction):
             except subprocess.TimeoutExpired:
                 process.kill()  # Force kill if needed
                 
-        await interaction.response.send_message("LokBot stopped successfully", ephemeral=True)
+        await interaction.followup.send("LokBot stopped successfully", ephemeral=True)
         
         # Clean up
         del bot_processes[user_id]
         
     except Exception as e:
-        await interaction.response.send_message(f"Error stopping bot: {str(e)}", ephemeral=True)
+        await interaction.followup.send(f"Error stopping bot: {str(e)}", ephemeral=True)
 
 @tree.command(name="status", description="Check if your LokBot is running")
 async def status(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     
+    # Use defer for consistency, even though this is usually quick
+    await interaction.response.defer(ephemeral=True)
+    
     if user_id in bot_processes:
         process = bot_processes[user_id]["process"]
         if process.poll() is None:  # Process is still running
-            await interaction.response.send_message("Your LokBot is currently running", ephemeral=True)
+            await interaction.followup.send("Your LokBot is currently running", ephemeral=True)
         else:
-            await interaction.response.send_message("Your LokBot process has ended", ephemeral=True)
+            await interaction.followup.send("Your LokBot process has ended", ephemeral=True)
             del bot_processes[user_id]
     else:
-        await interaction.response.send_message("You don't have a LokBot running", ephemeral=True)
+        await interaction.followup.send("You don't have a LokBot running", ephemeral=True)
 
 async def monitor_logs(user, process):
     """Monitor and send process logs to user via DM"""
