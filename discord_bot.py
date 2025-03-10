@@ -81,27 +81,42 @@ async def start_bot(interaction: discord.Interaction, token: str):
         # Make sure data directory exists
         os.makedirs("data", exist_ok=True)
         
-        # Create a helper script to run LokBot
+        # Create a helper script to run LokBot with full error logging
         helper_script = "data/run_lokbot.py"
         with open(helper_script, "w") as f:
             f.write("""
 import os
 import sys
-sys.path.append('.')
-from lokbot.app import main
+import traceback
 
-if __name__ == "__main__":
-    main()
+# Add current directory to path
+sys.path.insert(0, '.')
+
+try:
+    from lokbot.app import main
+    print("Starting LokBot with token from environment variable")
+    if os.environ.get("AUTH_TOKEN"):
+        print(f"Token found in environment: {os.environ.get('AUTH_TOKEN')[:10]}...")
+        main()
+    else:
+        print("ERROR: No AUTH_TOKEN found in environment variables")
+except Exception as e:
+    print(f"CRITICAL ERROR in LokBot: {str(e)}")
+    traceback.print_exc()
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Python path: {sys.path}")
+    print(f"Environment variables: {dict(os.environ)}")
 """)
         
-        # Run the helper script with proper environment
+        # Run the helper script with proper environment and working directory
         process = subprocess.Popen(
             ["python", helper_script], 
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
-            env=my_env
+            env=my_env,
+            cwd=os.getcwd()  # Ensure correct working directory
         )
 
         bot_processes[user_id] = {
@@ -193,10 +208,12 @@ async def status(interaction: discord.Interaction):
 async def monitor_logs(user, process):
     """Monitor bot status and display application logs"""
     try:
+        debug_info = []
         await user.send("✅ Your LokBot has started successfully!")
         
         # Create a task to continuously read and display output
         async def read_output_continuously():
+            nonlocal debug_info
             while process.poll() is None:  # While process is still running
                 try:
                     # Read line from stdout (non-blocking)
@@ -205,11 +222,23 @@ async def monitor_logs(user, process):
                         if line:
                             line_text = line.strip().decode('utf-8', errors='replace') \
                                 if isinstance(line, bytes) else line.strip()
+                            
                             # Print to Replit console
                             print(f"[LokBot] {line_text}")
                             
-                            # Optionally, send important log messages to the user
-                            if "ERROR" in line_text or "CRITICAL" in line_text:
+                            # Collect debug info
+                            debug_info.append(line_text)
+                            
+                            # Send all log messages to improve visibility during debugging
+                            # (we can make this more selective later)
+                            try:
+                                if len(line_text) > 0:  # Only send non-empty lines
+                                    await user.send(f"📋 **Log**: {line_text}")
+                            except:
+                                pass  # Ignore if can't send to user
+                            
+                            # Send alerts for errors
+                            if "ERROR" in line_text or "CRITICAL" in line_text or "Exception" in line_text:
                                 try:
                                     await user.send(f"⚠️ **Alert**: {line_text}")
                                 except:
