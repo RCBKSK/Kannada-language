@@ -57,9 +57,10 @@ async def start_bot(interaction: discord.Interaction, token: str):
 
     # Use deferred response with error handling
     try:
-        await interaction.response.defer(ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
         interaction_valid = True
-    except discord.errors.NotFound:
+    except (discord.errors.NotFound, discord.errors.HTTPException):
         interaction_valid = False
         return
 
@@ -107,10 +108,11 @@ async def stop_bot(interaction: discord.Interaction):
     try:
         # Try to defer, but handle the case if interaction has already expired
         try:
-            await interaction.response.defer(ephemeral=True)
+            if not interaction.response.is_done():
+                await interaction.response.defer(ephemeral=True)
             interaction_valid = True
-        except discord.errors.NotFound:
-            # Interaction already timed out or doesn't exist
+        except (discord.errors.NotFound, discord.errors.HTTPException):
+            # Interaction already timed out, doesn't exist, or already acknowledged
             interaction_valid = False
 
         # Terminate the process
@@ -141,10 +143,11 @@ async def status(interaction: discord.Interaction):
     try:
         # Use defer but handle if interaction expired
         try:
-            await interaction.response.defer(ephemeral=True)
+            if not interaction.response.is_done():
+                await interaction.response.defer(ephemeral=True)
             interaction_valid = True
-        except discord.errors.NotFound:
-            # Interaction already timed out
+        except (discord.errors.NotFound, discord.errors.HTTPException):
+            # Interaction already timed out or already acknowledged
             interaction_valid = False
             return
 
