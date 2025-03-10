@@ -197,6 +197,8 @@ def run_http_server():
             self.end_headers()
             self.wfile.write(b'LokBot is running\n')
     
+    # Render sets PORT environment variable automatically
+    # This will work on both Replit and Render
     port = int(os.environ.get('PORT', 3000))
     server = http.server.HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
     
