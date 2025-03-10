@@ -67,9 +67,22 @@ async def start_bot(interaction: discord.Interaction, token: str):
         config_path = f"data/config_{user_id}.json"
         with open("config.json", "r") as f:
             config = json.load(f)
+        
+        # Add captcha solver config if not present
+        if "captcha_solver_config" not in config:
+            config["captcha_solver_config"] = {"ttshitu": {"username": "", "password": ""}}
 
         with open(config_path, "w") as f:
             json.dump(config, f)
+
+        # Log the token length for debugging (without revealing the actual token)
+        logger.info(f"Starting bot with token length: {len(token)}")
+        
+        # Validate token format more thoroughly
+        if not token.strip() or len(token) < 50:  # Most JWT tokens are longer
+            if interaction_valid:
+                await interaction.followup.send("Token appears to be invalid (too short). Please check your token and try again.", ephemeral=True)
+            return
 
         process = subprocess.Popen(["python", "-m", "lokbot", token],
                                    stdout=subprocess.PIPE,
@@ -84,7 +97,7 @@ async def start_bot(interaction: discord.Interaction, token: str):
 
         # Send confirmation if interaction is still valid
         if interaction_valid:
-            await interaction.followup.send(f"LokBot started successfully!",
+            await interaction.followup.send(f"LokBot started successfully! Check your DMs for status updates.",
                                             ephemeral=True)
 
         # Start log monitoring
@@ -175,24 +188,62 @@ async def status(interaction: discord.Interaction):
 async def monitor_logs(user, process):
     """Monitor bot status and display application logs"""
     try:
-        await user.send("✅ Your LokBot has started successfully!")
-
+        await user.send("✅ Your LokBot is starting up...")
+        
+        auth_error_detected = False
+        startup_complete = False
+        output_buffer = []
+        
         while True:
             # Check if process has ended
             if process.poll() is not None:
+                # Process ended - check if we have an error message
+                if not startup_complete and output_buffer:
+                    error_message = "❌ LokBot failed to start properly. Possible issues:\n"
+                    error_message += "- Invalid or expired token\n"
+                    error_message += "- API connection problems\n"
+                    error_message += "- Server authentication issues\n\n"
+                    error_message += "Check the logs for details and try again with a new token."
+                    await user.send(error_message)
                 break
 
             # Read output from the subprocess
             output = process.stdout.readline()
             if output:
-                logger.info(f"LokBot Output: {output.strip()}")
-                await user.send(f"LokBot Output: {output.strip()}")
+                stripped_output = output.strip()
+                logger.info(f"LokBot Output: {stripped_output}")
+                
+                # Store recent outputs for error analysis
+                output_buffer.append(stripped_output)
+                if len(output_buffer) > 10:  # Keep only the last 10 messages
+                    output_buffer.pop(0)
+                
+                # Check for successful startup
+                if "kingdom/enter" in stripped_output and "result\": true" in stripped_output:
+                    if not startup_complete:
+                        startup_complete = True
+                        await user.send("✅ LokBot has successfully connected to the game server!")
+                
+                # Only send non-debug messages to the user
+                if not stripped_output.startswith("DEBUG") and not "DEBUG" in stripped_output[:20]:
+                    await user.send(f"LokBot: {stripped_output}")
 
             # Read errors from the subprocess
             error = process.stderr.readline()
             if error:
-                logger.error(f"LokBot Error: {error.strip()}")
-                await user.send(f"LokBot Error: {error.strip()}")
+                stripped_error = error.strip()
+                logger.error(f"LokBot Error: {stripped_error}")
+                
+                # Detect auth errors
+                if "NoAuthException" in stripped_error or "auth/connect" in stripped_error:
+                    auth_error_detected = True
+                
+                await user.send(f"❌ Error: {stripped_error}")
+                
+                # Provide immediate feedback for auth errors
+                if auth_error_detected and not startup_complete:
+                    await user.send("❌ Authentication failed! Your token appears to be invalid or expired. Please get a new token and try again.")
+                    return
 
             # Wait a bit before checking again
             await asyncio.sleep(0.1)
