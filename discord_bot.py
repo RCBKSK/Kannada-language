@@ -152,19 +152,27 @@ async def monitor_logs(user, process):
     try:
         await user.send("✅ Your LokBot has started successfully!")
         
-        # Read and print output to the console for visibility in Replit
-        for line in iter(process.stdout.readline, ''):
-            if not line:
-                break
-            
-            # Print to Replit console
-            print(line.strip())
-            
-            # Wait for process to end if no more output
+        # Function to read output without blocking
+        async def read_output():
+            if process.stdout.readable():
+                line = process.stdout.readline()
+                if line:
+                    return line.strip()
+            return None
+        
+        while True:
+            # Check if process has ended
             if process.poll() is not None:
                 break
                 
-            # Non-blocking sleep to prevent CPU overload
+            # Try to read a line (non-blocking)
+            line = await asyncio.get_event_loop().run_in_executor(None, process.stdout.readline)
+            
+            if line:
+                # Print to Replit console
+                print(line.strip())
+            
+            # Always wait a bit before checking again
             await asyncio.sleep(0.1)
         
         # Only notify when the process has ended
