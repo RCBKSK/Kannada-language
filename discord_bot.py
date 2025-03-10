@@ -88,35 +88,78 @@ async def start_bot(interaction: discord.Interaction, token: str):
 import os
 import sys
 import traceback
+import time
+
+# Force synchronous stdout
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+print("STARTING LOKBOT HELPER SCRIPT")
+print(f"Python version: {sys.version}")
 
 # Add current directory to path
 sys.path.insert(0, '.')
+print(f"Current directory: {os.getcwd()}")
 
 try:
+    print("Importing lokbot.app...")
     from lokbot.app import main
+    print("Import successful")
+    
     print("Starting LokBot with token from environment variable")
     if os.environ.get("AUTH_TOKEN"):
-        print(f"Token found in environment: {os.environ.get('AUTH_TOKEN')[:10]}...")
+        masked_token = os.environ.get("AUTH_TOKEN")[:10] + "..." if os.environ.get("AUTH_TOKEN") else "None"
+        print(f"Token found in environment: {masked_token}")
+        
+        # Ensure the token is valid
+        import lokbot.util
+        try:
+            token_data = lokbot.util.decode_jwt(os.environ.get("AUTH_TOKEN"))
+            print(f"Token data: {token_data}")
+        except Exception as jwt_err:
+            print(f"WARNING: Token validation error: {str(jwt_err)}")
+        
+        # Ensure data directory exists
+        os.makedirs("data", exist_ok=True)
+        
+        # Run main with explicit stdout flushing
+        print("Starting main function...")
         main()
     else:
         print("ERROR: No AUTH_TOKEN found in environment variables")
+except ImportError as ie:
+    print(f"IMPORT ERROR: {str(ie)}")
+    print("Checking module availability:")
+    print(f"Current sys.path: {sys.path}")
+    try:
+        import lokbot
+        print("lokbot package is available")
+    except ImportError:
+        print("lokbot package is NOT available")
 except Exception as e:
     print(f"CRITICAL ERROR in LokBot: {str(e)}")
     traceback.print_exc()
     print(f"Current working directory: {os.getcwd()}")
     print(f"Python path: {sys.path}")
-    print(f"Environment variables: {dict(os.environ)}")
+    
+    # Don't print all environment variables as they may contain sensitive information
+    safe_env_keys = [k for k in os.environ.keys() if 'TOKEN' not in k.upper() and 'KEY' not in k.upper() and 'SECRET' not in k.upper()]
+    print(f"Environment variable keys: {safe_env_keys}")
 """)
         
         # Run the helper script with proper environment and working directory
+        # Use shell=True on Windows to ensure proper PATH resolution
+        use_shell = os.name == 'nt'
+        
         process = subprocess.Popen(
-            ["python", helper_script], 
+            ["python", "-u", helper_script],  # -u for unbuffered output
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
             env=my_env,
-            cwd=os.getcwd()  # Ensure correct working directory
+            cwd=os.getcwd(),  # Ensure correct working directory
+            shell=use_shell,
         )
 
         bot_processes[user_id] = {
@@ -229,11 +272,16 @@ async def monitor_logs(user, process):
                             # Collect debug info
                             debug_info.append(line_text)
                             
-                            # Send all log messages to improve visibility during debugging
-                            # (we can make this more selective later)
+                            # Send important log messages to avoid Discord rate limiting
+                            # We'll be more selective to avoid flooding the user
                             try:
                                 if len(line_text) > 0:  # Only send non-empty lines
-                                    await user.send(f"📋 **Log**: {line_text}")
+                                    # Only send important or new information
+                                    if any(keyword in line_text for keyword in [
+                                        "ERROR", "CRITICAL", "WARNING", "STARTING", "SUCCESS", 
+                                        "IMPORT", "Token", "Starting", "HTTP server"
+                                    ]):
+                                        await user.send(f"📋 **Log**: {line_text}")
                             except:
                                 pass  # Ignore if can't send to user
                             
