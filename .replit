@@ -35,5 +35,9 @@ args = "python discord_bot.py"
 localPort = 3000
 externalPort = 80
 
+[[ports]]
+localPort = 10000
+externalPort = 3000
+
 [deployment]
 run = ["sh", "-c", "python discord_bot.py"]
