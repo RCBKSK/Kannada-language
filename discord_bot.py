@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands
 import os
@@ -9,6 +8,11 @@ import asyncio
 from dotenv import load_dotenv
 from lokbot.util import decode_jwt
 from lokbot.app import main
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -37,6 +41,7 @@ async def start_bot(interaction: discord.Interaction, token: str):
             await interaction.response.send_message("Invalid token format", ephemeral=True)
             return
     except Exception as e:
+        logger.error(f"Error validating token: {str(e)}")
         await interaction.response.send_message(f"Error validating token: {str(e)}", ephemeral=True)
         return
     
@@ -77,9 +82,9 @@ async def start_bot(interaction: discord.Interaction, token: str):
         asyncio.create_task(monitor_logs(interaction.user, process))
         
     except Exception as e:
+        logger.error(f"Error starting bot: {str(e)}")
         if interaction_valid:
             await interaction.followup.send(f"Error starting bot: {str(e)}", ephemeral=True)
-        print(f"Error starting bot: {str(e)}")
 
 @tree.command(name="stop", description="Stop your running LokBot")
 async def stop_bot(interaction: discord.Interaction):
@@ -115,9 +120,9 @@ async def stop_bot(interaction: discord.Interaction):
         del bot_processes[user_id]
         
     except Exception as e:
+        logger.error(f"Error stopping bot: {str(e)}")
         if interaction_valid:
             await interaction.followup.send(f"Error stopping bot: {str(e)}", ephemeral=True)
-        print(f"Error stopping bot: {str(e)}")
 
 @tree.command(name="status", description="Check if your LokBot is running")
 async def status(interaction: discord.Interaction):
@@ -143,9 +148,9 @@ async def status(interaction: discord.Interaction):
         else:
             await interaction.followup.send("You don't have a LokBot running", ephemeral=True)
     except Exception as e:
+        logger.error(f"Error checking status: {str(e)}")
         if interaction_valid:
             await interaction.followup.send(f"Error checking status: {str(e)}", ephemeral=True)
-        print(f"Error checking status: {str(e)}")
 
 async def monitor_logs(user, process):
     """Monitor bot status and display application logs"""
@@ -169,8 +174,8 @@ async def monitor_logs(user, process):
             line = await asyncio.get_event_loop().run_in_executor(None, process.stdout.readline)
             
             if line:
-                # Print to Replit console
-                print(line.strip())
+                # Print to console and log
+                logger.info(line.strip())
             
             # Always wait a bit before checking again
             await asyncio.sleep(0.1)
@@ -178,12 +183,12 @@ async def monitor_logs(user, process):
         # Only notify when the process has ended
         await user.send("❌ Your LokBot has stopped running.")
     except Exception as e:
-        print(f"Error in status monitoring: {str(e)}")
+        logger.error(f"Error in status monitoring: {str(e)}")
 
 @client.event
 async def on_ready():
     await tree.sync()
-    print(f"Discord bot is ready! Logged in as {client.user}")
+    logger.info(f"Discord bot is ready! Logged in as {client.user}")
 
 def run_http_server():
     """Run a simple HTTP server to keep the bot alive"""
@@ -197,8 +202,7 @@ def run_http_server():
             self.end_headers()
             self.wfile.write(b'LokBot is running\n')
     
-    # Render sets PORT environment variable automatically
-    # This will work on both Replit and Render
+    # Use the PORT environment variable provided by Render
     port = int(os.environ.get('PORT', 3000))
     server = http.server.HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)
     
@@ -206,24 +210,24 @@ def run_http_server():
     thread = threading.Thread(target=server.serve_forever)
     thread.daemon = True
     thread.start()
-    print(f"HTTP server started on port {port}")
+    logger.info(f"HTTP server started on port {port}")
 
 def run_discord_bot():
     # Get the token from environment variable
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
-        print("Error: DISCORD_BOT_TOKEN not found in environment")
+        logger.error("Error: DISCORD_BOT_TOKEN not found in environment")
         return
     
     # Start HTTP server to keep the bot alive
     run_http_server()
     
     try:
-        print(f"Starting Discord bot at {os.environ.get('PORT', 3000)}")
+        logger.info(f"Starting Discord bot at {os.environ.get('PORT', 3000)}")
         # Run the Discord bot
         client.run(token)
     except Exception as e:
-        print(f"CRITICAL ERROR: Discord bot crashed: {str(e)}")
+        logger.error(f"CRITICAL ERROR: Discord bot crashed: {str(e)}")
         # Print full exception details
         import traceback
         traceback.print_exc()
