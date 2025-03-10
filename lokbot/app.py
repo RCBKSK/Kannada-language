@@ -1,15 +1,11 @@
 import asyncio
 import functools
-import os
 import threading
 import time
 
 import schedule
 
 import lokbot.util
-import sys
-sys.path.append('.')  # Add the root directory to path
-import http_server
 from lokbot import project_root, logger, config
 from lokbot.async_farmer import AsyncLokFarmer
 from lokbot.exceptions import NoAuthException
@@ -48,12 +44,6 @@ def async_main(token):
 def main(token=None, captcha_solver_config=None):
     # async_main(token)
     # exit()
-
-    # Start HTTP server in a separate thread
-    port = int(os.getenv("PORT", 3000))
-    http_thread = threading.Thread(target=http_server.run_server, args=(port,), daemon=True)
-    http_thread.start()
-    print(f"HTTP server started on port {port}")
 
     if captcha_solver_config is None:
         captcha_solver_config = {}
