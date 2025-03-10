@@ -74,11 +74,16 @@ async def start_bot(interaction: discord.Interaction, token: str):
         with open(config_path, "w") as f:
             json.dump(config, f)
 
-        process = subprocess.Popen(["python", "-m", "lokbot", token], 
+        # Set token in environment variable which is how the module expects it
+        my_env = os.environ.copy()
+        my_env["AUTH_TOKEN"] = token
+        
+        process = subprocess.Popen(["python", "-m", "lokbot"], 
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.STDOUT,
                                   text=True,
-                                  bufsize=1)  # Line buffered output
+                                  bufsize=1,
+                                  env=my_env)  # Line buffered output with token in environment
 
         bot_processes[user_id] = {
             "process": process,
