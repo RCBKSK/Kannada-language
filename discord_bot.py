@@ -219,7 +219,17 @@ def run_discord_bot():
     run_http_server()
     
     try:
-        print(f"Starting Discord bot at {os.environ.get('PORT', 3000)}")
+        print(f"Starting Discord bot at port {os.environ.get('PORT', 3000)}")
+        # Validate token before running
+        if not token or len(token) < 50:
+            print("ERROR: Invalid Discord bot token format or missing token")
+            print(f"Token length: {len(token) if token else 'None'}")
+            # Keep server running even if bot fails
+            import time
+            while True:
+                time.sleep(60)
+                print("HTTP server still alive, waiting for valid token...")
+        
         # Run the Discord bot
         client.run(token)
     except Exception as e:
@@ -227,6 +237,12 @@ def run_discord_bot():
         # Print full exception details
         import traceback
         traceback.print_exc()
+        
+        # Keep HTTP server running even if bot fails
+        import time
+        while True:
+            time.sleep(60)
+            print("HTTP server still alive despite bot crash, waiting for restart...")
 
 if __name__ == "__main__":
     run_discord_bot()
