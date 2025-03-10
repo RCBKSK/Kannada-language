@@ -1,17 +1,20 @@
 
+# This file specifies render.com deployment configuration
+# See https://render.com/docs/yaml-spec for more information
+
 services:
   - type: web
     name: lokbot-discord
-    env: python
+    runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: python discord_bot.py
     envVars:
       - key: DISCORD_BOT_TOKEN
         sync: false
-      - key: PORT
-        value: 10000
-      # Adding debugging environment variables
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: PORT
+        value: "10000"
     plan: free
     healthCheckPath: /
+    healthCheckTimeout: 5
