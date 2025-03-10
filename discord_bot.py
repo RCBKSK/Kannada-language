@@ -186,7 +186,7 @@ async def status(interaction: discord.Interaction):
 
 
 async def monitor_logs(user, process):
-    """Monitor bot status and display application logs"""
+    """Monitor bot status and display only essential status updates"""
     try:
         await user.send("✅ Your LokBot is starting up...")
         
@@ -224,18 +224,7 @@ async def monitor_logs(user, process):
                         startup_complete = True
                         await user.send("✅ LokBot has successfully connected to the game server!")
                 
-                # Only send non-debug messages to the user
-                if not stripped_output.startswith("DEBUG") and not "DEBUG" in stripped_output[:20]:
-                    # Truncate message if it's too long for Discord (2000 char limit)
-                    message = f"LokBot: {stripped_output}"
-                    if len(message) > 1950:  # Leave some buffer
-                        message = message[:1947] + "..."
-                    try:
-                        await user.send(message)
-                    except discord.errors.HTTPException as e:
-                        logger.error(f"Failed to send Discord message: {str(e)}")
-                        # Try sending a shortened version
-                        await user.send(f"LokBot: [Message too long to display] - Check logs for details")
+                # Don't send regular log output to Discord - only log to server logs
 
             # Read errors from the subprocess
             error = process.stderr.readline()
@@ -246,22 +235,17 @@ async def monitor_logs(user, process):
                 # Detect auth errors
                 if "NoAuthException" in stripped_error or "auth/connect" in stripped_error:
                     auth_error_detected = True
-                
-                # Truncate error message if needed
-                error_message = f"❌ Error: {stripped_error}"
-                if len(error_message) > 1950:  # Leave some buffer
-                    error_message = error_message[:1947] + "..."
-                    
-                try:
-                    await user.send(error_message)
-                except discord.errors.HTTPException as e:
-                    logger.error(f"Failed to send Discord error message: {str(e)}")
-                    await user.send(f"❌ Error: [Message too long to display] - Check logs for details")
-                
-                # Provide immediate feedback for auth errors
-                if auth_error_detected and not startup_complete:
+                    # Send auth error message
                     await user.send("❌ Authentication failed! Your token appears to be invalid or expired. Please get a new token and try again.")
                     return
+                
+                # Only send critical errors to Discord
+                if "CRITICAL" in stripped_error or "ERROR" in stripped_error or "FATAL" in stripped_error:
+                    try:
+                        error_message = "❌ Critical error detected. Check logs for details."
+                        await user.send(error_message)
+                    except discord.errors.HTTPException as e:
+                        logger.error(f"Failed to send Discord error message: {str(e)}")
 
             # Wait a bit before checking again
             await asyncio.sleep(0.1)
