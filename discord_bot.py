@@ -78,12 +78,18 @@ async def start_bot(interaction: discord.Interaction, token: str):
         my_env = os.environ.copy()
         my_env["AUTH_TOKEN"] = token
         
-        process = subprocess.Popen(["python", "-m", "lokbot"], 
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.STDOUT,
-                                  text=True,
-                                  bufsize=1,
-                                  env=my_env)  # Line buffered output with token in environment
+        # Make sure data directory exists
+        os.makedirs("data", exist_ok=True)
+        
+        # Run the main function directly to avoid command-line argument parsing issues
+        process = subprocess.Popen(
+            ["python", "-c", "from lokbot.app import main; main()"], 
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env=my_env
+        )
 
         bot_processes[user_id] = {
             "process": process,
