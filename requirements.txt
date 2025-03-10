@@ -23,7 +23,7 @@ propcache==0.3.0
 PyJWT==2.7.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
-python-engineio @ git+https://github.com/hldh214/python-engineio-3-for-lokbot.git@f80ff666dc5dc21a8911108132ca75aaa239127b
+git+https://github.com/hldh214/python-engineio-3-for-lokbot.git@f80ff666dc5dc21a8911108132ca75aaa239127b
 python-socketio==4.6.1
 ratelimit==2.2.1
 requests==2.32.3
