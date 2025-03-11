@@ -890,6 +890,19 @@ Status - {status}{occupied_info}"""
                                     status, 
                                     occupied_info.strip() if occupied_info else ""
                                 )
+                                
+                            # Send to custom webhook if configured (you can customize the condition as needed)
+                            if config.get('discord', {}).get('custom_webhook_url'):
+                                custom_webhook = DiscordWebhook(config.get('discord', {}).get('custom_webhook_url'))
+                                custom_webhook.send_object_log(
+                                    f"{obj_type} (Custom Alert: {resource_name})", 
+                                    code, 
+                                    level, 
+                                    loc, 
+                                    status, 
+                                    occupied_info.strip() if occupied_info else ""
+                                )
+                                )
                         except Exception as e:
                             logger.error(f"Failed to send to Discord: {e}")
 
