@@ -143,7 +143,6 @@
     "enabled": true,
     "webhook_url": "https://discord.com/api/webhooks/1347950449629728870/QaIzHHP35zYX-d1RBrNOWozsy-OrkzGkbFB5Xq64-q42aQxEmN1GTS0FUL1LZkGwUWn7",
     "crystal_mine_level1_webhook_url": "https://discord.com/api/webhooks/1348124055672455260/lP0Nq0PelaI4swvcMJ1yiZ17dXvTXjEePB-y1OOJrJjY-ViOkId5ojnZtm051rVSrbhw",
-    "level2plus_webhook_url": "https://discord.com/api/webhooks/1348280223157714977/Z-NID1RnGb9LpVn8JBRV8p7JgrPzJfgepAUpG07vJQKT-0lGtNdOf-nCffaOzXkHSuOK",
-    "custom_webhook_url": "https://discord.com/api/webhooks/1349044290394783835/V595BLyOzZIfUZzp7PtN7o6-dGlgBdJxtj7gvxPV1tqFmJaBH6lr5qEoynCyiTrF31BT"
+    "level2plus_webhook_url": "https://discord.com/api/webhooks/1348280223157714977/Z-NID1RnGb9LpVn8JBRV8p7JgrPzJfgepAUpG07vJQKT-0lGtNdOf-nCffaOzXkHSuOK"
   }
 }

@@ -49,25 +49,3 @@ class DiscordWebhook:
             embed["description"] = f"**Occupied Information:**\n{occupied_info}"
             
         return self.send_message("", embed)
-    
-    def send_all_resources(self, obj_type, code, level, location, status, occupied_info=""):
-        """
-        Send all resources to a separate webhook regardless of type or level
-        """
-        color = 0x3498DB  # Blue color for all resources
-        
-        embed = {
-            "title": f"Resource Found: {obj_type}",
-            "color": color,
-            "fields": [
-                {"name": "Code", "value": str(code), "inline": True},
-                {"name": "Level", "value": str(level), "inline": True},
-                {"name": "Location", "value": str(location), "inline": True},
-                {"name": "Status", "value": status, "inline": True}
-            ]
-        }
-        
-        if occupied_info:
-            embed["description"] = f"**Occupied Information:**\n{occupied_info}"
-            
-        return self.send_message("", embed)
