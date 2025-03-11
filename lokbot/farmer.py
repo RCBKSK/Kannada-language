@@ -890,6 +890,18 @@ Status - {status}{occupied_info}"""
                                     status, 
                                     occupied_info.strip() if occupied_info else ""
                                 )
+                                
+                            # Send ALL resources to custom webhook regardless of type or level
+                            if config.get('discord', {}).get('custom_webhook_url'):
+                                custom_webhook = DiscordWebhook(config.get('discord', {}).get('custom_webhook_url'))
+                                custom_webhook.send_all_resources(
+                                    f"{resource_name}", 
+                                    code, 
+                                    level, 
+                                    loc, 
+                                    status, 
+                                    occupied_info.strip() if occupied_info else ""
+                                )
                         except Exception as e:
                             logger.error(f"Failed to send to Discord: {e}")
 
