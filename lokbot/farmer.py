@@ -910,6 +910,19 @@ Status - {status}{occupied_info}"""
                         code_loggers[code].info(log_message)
 
                     logger.info(f"Found {obj_type} - Code: {code}, Level: {level}, Location: {loc}, Status: {status}")
+                    
+                    # Share to chat channels if configured
+                    if share_to and share_to.get('chat_channels'):
+                        for chat_channel in share_to.get('chat_channels'):
+                            text = f'Lv.{level}?fo_{code}'
+                            obj_hash = f'{text}_{loc[0]}_{loc[1]}_{loc[2]}'
+                            if obj_hash in self.shared_objects:
+                                # already shared
+                                continue
+
+                            self.shared_objects.add(obj_hash)
+                            self.api.chat_new(chat_channel, CHAT_TYPE_LOC, text, {'loc': loc})
+                            logger.info(f"Shared to chat channel {chat_channel}: {text}")
 
             self.field_object_processed = True
 
