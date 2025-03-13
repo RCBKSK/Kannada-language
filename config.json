@@ -87,10 +87,10 @@
               "level": []
             }
           ],
-          "radius": 16,
+          "radius": 8,
           "share_to": {
             "chat_channels": [
-              1
+              2
             ]
           }
         },
