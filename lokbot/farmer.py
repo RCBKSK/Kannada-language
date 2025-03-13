@@ -913,16 +913,22 @@ Status - {status}{occupied_info}"""
                     
                     # Share to chat channels if configured
                     if share_to and share_to.get('chat_channels'):
-                        for chat_channel in share_to.get('chat_channels'):
-                            text = f'Lv.{level}?fo_{code}'
-                            obj_hash = f'{text}_{loc[0]}_{loc[1]}_{loc[2]}'
-                            if obj_hash in self.shared_objects:
-                                # already shared
-                                continue
+                        # Only share Crystal Mines (code 20100105) of level 1 and 2
+                        should_share = code == 20100105 and level in [1, 2]
+                        
+                        if should_share:
+                            for chat_channel in share_to.get('chat_channels'):
+                                text = f'Lv.{level}?fo_{code}'
+                                obj_hash = f'{text}_{loc[0]}_{loc[1]}_{loc[2]}'
+                                if obj_hash in self.shared_objects:
+                                    # already shared
+                                    continue
 
-                            self.shared_objects.add(obj_hash)
-                            self.api.chat_new(chat_channel, CHAT_TYPE_LOC, text, {'loc': loc})
-                            logger.info(f"Shared to chat channel {chat_channel}: {text}")
+                                self.shared_objects.add(obj_hash)
+                                self.api.chat_new(chat_channel, CHAT_TYPE_LOC, text, {'loc': loc})
+                                logger.info(f"Shared to chat channel {chat_channel}: {text} (Crystal Mine)")
+                        else:
+                            logger.info(f"Not sharing to chat - only Crystal Mines level 1 & 2 are shared")
 
             self.field_object_processed = True
 
