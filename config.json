@@ -90,8 +90,7 @@
           "radius": 16,
           "share_to": {
             "chat_channels": [
-              1,
-              2
+              1
             ]
           }
         },
